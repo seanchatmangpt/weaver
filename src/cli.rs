@@ -58,6 +58,10 @@ pub enum Commands {
     /// Manage Semantic Convention Registry
     Registry(RegistryCommand),
     /// Plan, construct, and receipt cloud integrations from ggen Marketplace packs.
+    ///
+    /// This command is hidden while the BRCE runner protocol is experimental; it remains
+    /// directly invokable as `weaver cloud ...` and is documented in `docs/cloud-marketplace.md`.
+    #[command(hide = true)]
     Cloud(CloudArgs),
     /// Manage Diagnostic Messages
     Diagnostic(DiagnosticCommand),

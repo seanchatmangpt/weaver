@@ -20,6 +20,7 @@ use crate::cli::{Cli, Commands};
 use crate::diagnostic::DEFAULT_DIAGNOSTIC_TEMPLATES;
 
 mod cli;
+mod cloud;
 mod diagnostic;
 mod registry;
 mod serve;
@@ -177,6 +178,19 @@ fn run_command(cli: &Cli) -> ExitDirectives {
     let auth = registry::auth_resolver_from_config(cfg);
     let cmd_result = match &cli.command {
         Some(Commands::Registry(params)) => semconv_registry(params, cfg, &auth),
+        Some(Commands::Cloud(params)) => {
+            if let Err(error) = cloud::command(&params.command) {
+                log_error(error);
+                return ExitDirectives {
+                    exit_code: 1,
+                    warnings: None,
+                };
+            }
+            return ExitDirectives {
+                exit_code: 0,
+                warnings: None,
+            };
+        }
         Some(Commands::Diagnostic(params)) => diagnostic::diagnostic(params),
         Some(Commands::Serve(params)) => serve::command(params, cfg, &auth),
         Some(Commands::Completion(completions)) => {

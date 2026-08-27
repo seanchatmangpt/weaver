@@ -68,7 +68,7 @@ jobs:
         run: |
           set -euo pipefail
           git diff --exit-code -- wrappers/ash/lib/weaver_ash/generated/operation_contract.ex
-          test "$(grep -c 'System.cmd' wrappers/ash/lib/weaver_ash/runtime.ex)" -eq 1
+          test "$(grep -Ec '^[[:space:]]*\{output, exit_status\} = System\.cmd\(' wrappers/ash/lib/weaver_ash/runtime.ex)" -eq 1
           ! grep -R --line-number -E 'System\.shell|:os\.cmd|Port\.open' wrappers/ash/lib
           grep -q 'remote_registry_not_admitted' wrappers/ash/lib/weaver_ash/runtime.ex
           grep -q 'WEAVER_EXECUTE_RECEIPTED' wrappers/ash/ontology/weaver-ash.ttl

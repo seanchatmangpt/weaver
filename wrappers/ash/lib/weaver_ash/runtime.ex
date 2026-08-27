@@ -3,12 +3,14 @@
 defmodule WeaverAsh.Refusal do
   @moduledoc "Typed fail-closed refusal emitted before Weaver actuation."
   defexception [:type, :message, details: %{}]
+  @type t :: %__MODULE__{}
 end
 
 defmodule WeaverAsh.Plan do
   @moduledoc false
   @enforce_keys [:operation, :registry, :executable, :args, :authority]
   defstruct [:operation, :registry, :executable, :args, :authority, :id]
+  @type t :: %__MODULE__{}
 end
 
 defmodule WeaverAsh.Receipt do
@@ -48,6 +50,8 @@ defmodule WeaverAsh.Receipt do
     :output_bytes,
     :error
   ]
+
+  @type t :: %__MODULE__{}
 end
 
 defmodule WeaverAsh.Runtime do
@@ -338,7 +342,7 @@ defmodule WeaverAsh.Runtime do
       completed_at: DateTime.to_iso8601(completed_at),
       duration_us: duration_us,
       exit_status: exit_status,
-      output_sha256: output |> :crypto.hash(:sha256) |> hex(),
+      output_sha256: :crypto.hash(:sha256, output) |> hex(),
       output_bytes: byte_size(output),
       error: error
     }

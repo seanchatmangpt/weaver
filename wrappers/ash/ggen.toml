@@ -1,0 +1,68 @@
+[project]
+name = "weaver-ash"
+version = "0.1.0"
+description = "Ontology-first manufacturing contract for the Ash/Reactor wrapper around OpenTelemetry Weaver"
+
+[ontology]
+source = "ontology/weaver-ash.ttl"
+base_iri = "https://opentelemetry.io/weaver/ash#"
+
+[ontology.prefixes]
+wa = "https://opentelemetry.io/weaver/ash#"
+skos = "http://www.w3.org/2004/02/skos/core#"
+dcterms = "http://purl.org/dc/terms/"
+prov = "http://www.w3.org/ns/prov#"
+dcat = "http://www.w3.org/ns/dcat#"
+sh = "http://www.w3.org/ns/shacl#"
+
+[inference]
+
+[[inference.rules]]
+name = "admitted-operation-projection"
+construct = """
+PREFIX wa: <https://opentelemetry.io/weaver/ash#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+CONSTRUCT {
+  ?op a wa:Operation, skos:Concept ;
+      wa:operation ?operation ;
+      wa:subcommand ?subcommand ;
+      wa:target ?target ;
+      wa:allowsId ?allowsId ;
+      wa:authority ?authority ;
+      wa:standing ?standing .
+}
+WHERE {
+  ?op a wa:Operation ;
+      wa:operation ?operation ;
+      wa:subcommand ?subcommand ;
+      wa:target ?target ;
+      wa:allowsId ?allowsId ;
+      wa:authority ?authority ;
+      wa:standing "ADMITTED" .
+  BIND("ADMITTED" AS ?standing)
+}
+ORDER BY ?operation
+"""
+
+[generation]
+output_dir = "."
+
+[[generation.rules]]
+name = "weaver-operation-contract"
+query = { inline = """
+PREFIX wa: <https://opentelemetry.io/weaver/ash#>
+SELECT ?operation ?subcommand ?target ?allows_id ?authority
+WHERE {
+  ?op a wa:Operation ;
+      wa:operation ?operation ;
+      wa:subcommand ?subcommand ;
+      wa:target ?target ;
+      wa:allowsId ?allows_id ;
+      wa:authority ?authority ;
+      wa:standing "ADMITTED" .
+}
+ORDER BY ?operation
+""" }
+template = { file = "templates/operation_contract.ex.tera" }
+output_file = "lib/weaver_ash/generated/operation_contract.ex"
+mode = "Overwrite"

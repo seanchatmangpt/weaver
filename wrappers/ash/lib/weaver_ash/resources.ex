@@ -10,6 +10,7 @@ defmodule WeaverAsh.Registry do
   """
 
   use Ash.Resource,
+    domain: WeaverAsh.Domain,
     data_layer: Ash.DataLayer.Ets,
     extensions: [AshR2RML.Resource]
 
@@ -43,6 +44,7 @@ defmodule WeaverAsh.ExecutionReceipt do
   @moduledoc "AshR2RML semantic projection for a receipted Weaver execution."
 
   use Ash.Resource,
+    domain: WeaverAsh.Domain,
     data_layer: Ash.DataLayer.Ets,
     extensions: [AshR2RML.Resource]
 
@@ -105,7 +107,11 @@ end
 defmodule WeaverAsh.Domain do
   @moduledoc "Ash domain for the Weaver semantic control-plane resources."
 
-  use Ash.Domain
+  # This wrapper is a reusable library rather than an OTP application that
+  # owns global Ash configuration.  Its resources bind to this domain
+  # explicitly above, so opt out of application-level domain-list validation
+  # instead of requiring consumers to mutate global config merely to compile.
+  use Ash.Domain, validate_config_inclusion?: false
 
   resources do
     resource(WeaverAsh.Registry)

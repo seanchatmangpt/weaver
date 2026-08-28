@@ -1,0 +1,132 @@
+name: Ash Wrapper
+
+on:
+  pull_request:
+    paths:
+      - "wrappers/ash/**"
+      - ".github/workflows/ash-wrapper.yml"
+  push:
+    branches:
+      - "feat/ash-r2rml-weaver-wrapper"
+    paths:
+      - "wrappers/ash/**"
+      - ".github/workflows/ash-wrapper.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ash-wrapper-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exact-subject:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GGEN_SHA: ddfa602bfbab57b7ed5150f61b0acac7a41e3020
+      GGEN_TOOLCHAIN: nightly-2026-06-22
+      ASH_R2RML_SHA: 067954ad406fd637fd47646bdb10c4580809c79d
+
+    steps:
+      - name: Checkout exact Weaver subject
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SUBJECT_SHA }}
+          persist-credentials: false
+
+      - name: Record admitted identities
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${SUBJECT_SHA}"
+          printf 'weaver=%s\n' "${SUBJECT_SHA}"
+          printf 'ggen=%s\n' "${GGEN_SHA}"
+          printf 'ash_r2rml=%s\n' "${ASH_R2RML_SHA}"
+
+      - name: Resolve exact ggen producer
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/seanchatmangpt/ggen.git "$RUNNER_TEMP/ggen"
+          git -C "$RUNNER_TEMP/ggen" checkout --detach "${GGEN_SHA}"
+          test "$(git -C "$RUNNER_TEMP/ggen" rev-parse HEAD)" = "${GGEN_SHA}"
+
+      - name: Admit pinned ggen Rust toolchain
+        run: rustup toolchain install "${GGEN_TOOLCHAIN}" --profile minimal
+
+      - name: Manufacture operation projection through ggen
+        working-directory: wrappers/ash
+        run: |
+          set -euo pipefail
+          cargo +"${GGEN_TOOLCHAIN}" run \
+            --manifest-path "$RUNNER_TEMP/ggen/Cargo.toml" \
+            -p ggen-cli-lib --bin ggen -- sync run
+          test -s .ggen-v2/receipt.json
+
+      - name: Verify deterministic projection and authority fence
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- wrappers/ash/lib/weaver_ash/generated/operation_contract.ex
+          test "$(grep -Ec '^[[:space:]]*\{output, exit_status\} = System\.cmd\(' wrappers/ash/lib/weaver_ash/runtime.ex)" -eq 1
+          ! grep -R --line-number -E 'System\.shell|:os\.cmd|Port\.open' wrappers/ash/lib
+          grep -q 'remote_registry_not_admitted' wrappers/ash/lib/weaver_ash/runtime.ex
+          grep -q 'WEAVER_EXECUTE_RECEIPTED' wrappers/ash/ontology/weaver-ash.ttl
+
+      - name: Admit exact Weaver Rust toolchain
+        run: rustup toolchain install 1.88.0 --profile minimal
+
+      - name: Materialize Weaver UI compile prerequisite
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack prepare pnpm@10.34.5 --activate
+          pnpm --dir ui install --frozen-lockfile
+          pnpm --dir ui build
+          test -d ui/dist
+          test -n "$(find ui/dist -type f -print -quit)"
+
+      - name: Build exact Weaver executable
+        run: cargo +1.88.0 build --release --bin weaver
+
+      - name: Set up pinned BEAM toolchain
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.2.4"
+          elixir-version: "1.18.4"
+
+      - name: Resolve wrapper dependencies
+        working-directory: wrappers/ash
+        run: mix deps.get
+
+      - name: Compile wrapper fail-closed
+        working-directory: wrappers/ash
+        run: mix compile --force --warnings-as-errors
+
+      - name: Materialize local semconv subject
+        run: |
+          set -euo pipefail
+          fixture="crates/weaver_semconv/tests/test_data/semconv_registry_v1.26.0.tar.gz"
+          test -s "${fixture}"
+          mkdir -p "$RUNNER_TEMP/semconv"
+          tar -xzf "${fixture}" -C "$RUNNER_TEMP/semconv"
+          registry="$(find "$RUNNER_TEMP/semconv" -type d -name model -print -quit)"
+          test -n "${registry}"
+          test -d "${registry}"
+          printf 'WEAVER_BIN=%s\n' "$GITHUB_WORKSPACE/target/release/weaver" >> "$GITHUB_ENV"
+          printf 'WEAVER_REGISTRY=%s\n' "${registry}" >> "$GITHUB_ENV"
+
+      - name: Execute unit plus exact-subject integration crown
+        working-directory: wrappers/ash
+        env:
+          RUN_WEAVER_INTEGRATION: "1"
+        run: mix test
+
+      - name: Preserve execution receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weaver-ash-receipt-${{ env.SUBJECT_SHA }}
+          path: wrappers/ash/tmp/integration-receipt.json
+          if-no-files-found: error
+          retention-days: 14

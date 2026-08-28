@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: Apache-2.0
+
+@prefix wa: <https://opentelemetry.io/weaver/ash#> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+wa:WeaverRegistry a rdfs:Class ;
+  rdfs:label "Weaver semantic convention registry" ;
+  rdfs:subClassOf dcat:Dataset .
+
+wa:WeaverPackage a rdfs:Class ;
+  rdfs:label "Weaver registry package" ;
+  rdfs:subClassOf dcat:Distribution .
+
+wa:Execution a rdfs:Class ;
+  rdfs:label "Receipted Weaver execution" ;
+  rdfs:subClassOf prov:Activity .
+
+wa:Receipt a rdfs:Class ;
+  rdfs:label "Weaver execution receipt" ;
+  rdfs:subClassOf prov:Entity .
+
+wa:Operation a rdfs:Class ;
+  rdfs:label "Admitted Weaver operation" ;
+  rdfs:subClassOf skos:Concept .
+
+wa:RefusedOperation a rdfs:Class ;
+  rdfs:label "Explicitly refused Weaver operation" ;
+  rdfs:subClassOf skos:Concept .
+
+wa:operation a rdf:Property ; rdfs:range xsd:string .
+wa:subcommand a rdf:Property ; rdfs:range xsd:string .
+wa:target a rdf:Property ; rdfs:range xsd:string .
+wa:allowsId a rdf:Property ; rdfs:range xsd:string .
+wa:authority a rdf:Property ; rdfs:range xsd:string .
+wa:standing a rdf:Property ; rdfs:range xsd:string .
+wa:exitStatus a rdf:Property ; rdfs:range xsd:integer .
+wa:outputDigest a rdf:Property ; rdfs:range xsd:string .
+wa:subjectDigest a rdf:Property ; rdfs:range xsd:string .
+wa:executableDigest a rdf:Property ; rdfs:range xsd:string .
+
+wa:check a wa:Operation, skos:Concept ;
+  skos:prefLabel "registry check" ;
+  dcterms:description "Validate an already-local semantic convention registry." ;
+  wa:operation "check" ;
+  wa:subcommand "check" ;
+  wa:target "" ;
+  wa:allowsId "false" ;
+  wa:authority "WEAVER_EXECUTE_RECEIPTED" ;
+  wa:standing "ADMITTED" .
+
+wa:packageJson a wa:Operation, skos:Concept ;
+  skos:prefLabel "registry package JSON" ;
+  dcterms:description "Package an already-local registry to JSON on standard output." ;
+  wa:operation "package_json" ;
+  wa:subcommand "package" ;
+  wa:target "json" ;
+  wa:allowsId "true" ;
+  wa:authority "WEAVER_EXECUTE_RECEIPTED" ;
+  wa:standing "ADMITTED" .
+
+wa:stats a wa:Operation, skos:Concept ;
+  skos:prefLabel "registry stats" ;
+  dcterms:description "Calculate statistics for an already-local semantic convention registry." ;
+  wa:operation "stats" ;
+  wa:subcommand "stats" ;
+  wa:target "" ;
+  wa:allowsId "false" ;
+  wa:authority "WEAVER_EXECUTE_RECEIPTED" ;
+  wa:standing "ADMITTED" .
+
+wa:rawArgv a wa:RefusedOperation, skos:Concept ;
+  skos:prefLabel "raw argv or shell command" ;
+  dcterms:description "Raw argv, shell interpolation, and ambient command execution are outside the wrapper authority boundary." ;
+  wa:standing "REFUSED" .
+
+wa:networkOrServer a wa:RefusedOperation, skos:Concept ;
+  skos:prefLabel "network and server operations" ;
+  dcterms:description "Remote registries, emit, live-check, MCP, infer, generate, and serve require a future authority extension with independently receipted effects." ;
+  wa:standing "REFUSED" .
+
+wa:OperationShape a sh:NodeShape ;
+  sh:targetClass wa:Operation ;
+  sh:property [
+    sh:path wa:operation ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path wa:subcommand ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:in ("check" "stats" "package")
+  ] ;
+  sh:property [
+    sh:path wa:authority ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:hasValue "WEAVER_EXECUTE_RECEIPTED"
+  ] ;
+  sh:property [
+    sh:path wa:standing ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:hasValue "ADMITTED"
+  ] .
+
+wa:ReceiptShape a sh:NodeShape ;
+  sh:targetClass wa:Receipt ;
+  sh:property [ sh:path wa:operation ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path wa:outputDigest ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path wa:subjectDigest ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path wa:executableDigest ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path prov:generatedAtTime ; sh:minCount 1 ; sh:maxCount 1 ] .

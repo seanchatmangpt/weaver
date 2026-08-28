@@ -76,6 +76,16 @@ jobs:
       - name: Admit exact Weaver Rust toolchain
         run: rustup toolchain install 1.88.0 --profile minimal
 
+      - name: Materialize Weaver UI compile prerequisite
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack prepare pnpm@10.34.5 --activate
+          pnpm --dir ui install --frozen-lockfile
+          pnpm --dir ui build
+          test -d ui/dist
+          test -n "$(find ui/dist -type f -print -quit)"
+
       - name: Build exact Weaver executable
         run: cargo +1.88.0 build --release --bin weaver
 
